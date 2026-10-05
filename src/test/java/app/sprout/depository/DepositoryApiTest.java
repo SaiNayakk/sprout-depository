@@ -143,6 +143,13 @@ class DepositoryApiTest {
         JsonNode listed = body(mvc.perform(get("/clearing/v1/transfers").param("settlementRef", settlement).header("X-Clearing-Key", CC))
                 .andExpect(status().isOk()).andExpect(MATCHES_CONTRACT)).path("transfers");
         assertThat(listed.size()).isEqualTo(2);
+        JsonNode all = body(mvc.perform(get("/participant/v1/holdings").header("X-Participant-Key", DP)).andExpect(status().isOk())
+                .andExpect(MATCHES_CONTRACT)).path("holdings");
+        boolean found = false;
+        for (JsonNode h : all) {
+            found |= h.path("boId").asText().equals(bo) && h.path("symbol").asText().equals("HARBOR") && h.path("quantity").asLong() == 6;
+        }
+        assertThat(found).as("this client's 6 HARBOR in the participant's full list").isTrue();
     }
 
     @Test

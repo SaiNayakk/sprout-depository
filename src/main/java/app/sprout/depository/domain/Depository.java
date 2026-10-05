@@ -31,6 +31,8 @@ public class Depository {
 
     public record Holding(String symbol, long quantity) {}
 
+    public record ClientHolding(String boId, String clientRef, String symbol, long quantity) {}
+
     public record Movement(String symbol, long quantity, long balanceAfter, String kind, String instructionId, String settlementRef,
                            Instant at) {}
 
@@ -110,6 +112,14 @@ public class Depository {
     public List<Holding> holdings(String boId) {
         return db.sql("SELECT symbol, quantity FROM holdings WHERE bo_id = ? AND quantity <> 0 ORDER BY symbol").param(boId)
                 .query((rs, n) -> new Holding(rs.getString(1), rs.getLong(2))).list();
+    }
+
+    /** Every holding of all a participant's clients, to reconcile the participant's books with the depository. */
+    public List<ClientHolding> allHoldings(Participant p) {
+        return db.sql("""
+                        SELECT a.bo_id, a.client_ref, h.symbol, h.quantity FROM holdings h JOIN accounts a ON a.bo_id = h.bo_id
+                        WHERE a.participant = ? AND h.quantity <> 0 ORDER BY a.bo_id, h.symbol""")
+                .param(p.name()).query((rs, n) -> new ClientHolding(rs.getString(1), rs.getString(2), rs.getString(3), rs.getLong(4))).list();
     }
 
     public List<Movement> movements(String boId) {
