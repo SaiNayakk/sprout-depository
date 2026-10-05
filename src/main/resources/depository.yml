@@ -1,0 +1,74 @@
+# Configuration for the depository service. Named depository.yml (not application.yml) so several services can
+# share one JVM host without their settings colliding.
+spring:
+  application:
+    name: sprout-depository
+  datasource:
+    url: ${DEPOSITORY_DB_URL:jdbc:postgresql://localhost:5432/sprout?currentSchema=depository}
+    username: ${DEPOSITORY_DB_USER:sprout}
+    password: ${DEPOSITORY_DB_PASSWORD:sprout}
+    hikari:
+      maximum-pool-size: 5
+      pool-name: depository
+      connection-timeout: 2000   # fail fast when the database is gone (CHAOS-01's lesson)
+      validation-timeout: 1000
+  flyway:
+    locations: classpath:db/depository
+    schemas: depository
+    default-schema: depository
+  jackson:
+    default-property-inclusion: non_null   # absent, never null: the contracts say so
+    deserialization:
+      fail-on-unknown-properties: true
+  jmx:
+    enabled: false
+
+server:
+  port: ${DEPOSITORY_PORT:8111}
+  address: ${DEPOSITORY_BIND:127.0.0.1}
+  tomcat:
+    threads:
+      max: 16
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        enabled: ${OTEL_ENABLED:false}
+        url: ${OTEL_METRICS_URL:http://localhost:4318/v1/metrics}
+        step: 15s
+    tracing:
+      endpoint: ${OTEL_TRACES_URL:http://localhost:4318/v1/traces}
+  tracing:
+    enabled: ${OTEL_ENABLED:false}
+    sampling:
+      probability: 1.0
+  metrics:
+    tags:
+      service: sprout-depository
+
+logging:
+  structured:
+    format:
+      console: ${LOG_FORMAT:}
+  pattern:
+    correlation: "[%X{requestId:-}] "
+
+sprout:
+  depository:
+    # Brokers acting for their clients. Each has its own 8-digit DP id, the start of its clients' account ids.
+    participants:
+      - name: sprout
+        dp-id: "12081600"
+        key: ${DEPOSITORY_SPROUT_PARTICIPANT_KEY:dev-only-participant-key}
+    clearing-key: ${DEPOSITORY_CLEARING_KEY:dev-only-depository-clearing-key}
+    # The clearing corporation's settlement account (it stands for the rest of the market)
+    settlement-account: "1200000000000001"
