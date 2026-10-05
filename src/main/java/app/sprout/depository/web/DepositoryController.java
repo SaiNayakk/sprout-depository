@@ -44,6 +44,13 @@ public class DepositoryController {
         return ResponseEntity.status(a.created() ? HttpStatus.CREATED : HttpStatus.OK).body(account(a.value()));
     }
 
+    @GetMapping("/participant/v1/holdings")
+    public Map<String, Object> allHoldings(@RequestHeader(value = "X-Participant-Key", required = false) String key) {
+        return Map.of("holdings", depository.allHoldings(depository.participant(key)).stream()
+                .map(h -> Map.<String, Object>of("boId", h.boId(), "clientRef", h.clientRef(), "symbol", h.symbol(), "quantity", h.quantity()))
+                .toList());
+    }
+
     @GetMapping("/participant/v1/accounts/{boId}")
     public Map<String, Object> get(@RequestHeader(value = "X-Participant-Key", required = false) String key, @PathVariable String boId) {
         return account(depository.mine(depository.participant(key), boId));
